@@ -1,14 +1,13 @@
-import { StyleSheet } from 'react-native';
-
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-
-export default function TabOneScreen() {
+import { View, Text, StyleSheet } from 'react-native';
+//homescreen
+export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
+      <Text style={styles.header}>Hello Bon!</Text>
+      <View style={styles.card}>
+        <Text style={styles.placeholder}>[ Daily Nutrient Totals ]</Text>
+        <Text>Calories: 0 / 3400 kcal</Text>
+      </View>
     </View>
   );
 }
@@ -16,16 +15,23 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 20,
+  header: {
+    fontSize: 22,
     fontWeight: 'bold',
+    marginTop: 40,
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  card: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  placeholder: {
+    color: '#888',
+    marginBottom: 10,
   },
 });
