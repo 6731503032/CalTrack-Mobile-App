@@ -1,4 +1,6 @@
 {
-  "firebase_hosting": {},
+  "firebase_hosting": {
+    "deploymentHostingUrl": "https://caltrack-72fa8.web.app"
+  },
   "cloud_run_deploy": {}
 }

@@ -1,11 +1,28 @@
-import { Stack } from 'expo-router';
-//This handles the high-level switching between the authentication flow and the main application.
+import { Stack } from "expo-router";
+import { Platform, View } from "react-native";
+
 export default function RootLayout() {
+  const isWeb = Platform.OS === "web";
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* The initial route is defined by the order or explicit initialRouteName */}
-      <Stack.Screen name="(auth)/login" options={{ title: 'Login' }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <View
+      style={{
+        flex: 1,
+        alignItems: isWeb ? "center" : "stretch",
+        backgroundColor: "#0B1220",
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          width: isWeb ? 400 : "100%",
+        }}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)/login" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </View>
+    </View>
   );
 }
