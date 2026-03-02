@@ -9,28 +9,35 @@ export default function TabsLayout() {
     <Tabs 
       screenOptions={{ 
         headerShown: false, 
-        tabBarActiveTintColor: '#00E5FF', // Your Cyan
+        tabBarActiveTintColor: '#00E5FF', // Cyan
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#0D1117', // High contrast Background
           borderTopWidth: 1,
-          borderTopColor: '#30363D', // Your border color
+          borderTopColor: '#30363D', // Border color
           height: isWeb ? 70 : 65,
           paddingBottom: 10,
           paddingTop: 8,
           elevation: 0,
         },
         tabBarItemStyle: {
-          height: 55, // Increased touch targets for accessibility
+          height: 55, // Increased touch targets
         }
       }}
     >
+      {/* --- HIDE THE INDEX (LOGIN) TAB --- */}
+      <Tabs.Screen 
+        name="index" 
+        options={{ 
+          href: null, // This removes the tab from the bottom bar
+        }} 
+      />
+
       <Tabs.Screen 
         name="home" 
         options={{ 
           title: 'Home', 
           tabBarLabel: 'Home',
-          // Use -outline for consistency in modern Ionicons v7
           tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
         }} 
       />
@@ -49,7 +56,6 @@ export default function TabsLayout() {
         options={{ 
           title: 'Tracker', 
           tabBarLabel: 'Tracker',
-          // 'stats-chart-outline' is the v7 name to prevent rectangles
           tabBarIcon: ({ color }) => <Ionicons name="stats-chart-outline" size={24} color={color} />,
         }} 
       />

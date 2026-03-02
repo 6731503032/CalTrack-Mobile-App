@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { getAuth, signOut } from '@firebase/auth'; // Added Firebase Auth
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,7 +17,7 @@ import {
 } from 'react-native';
 import { GoalStore, UserGoals } from '../../constants/GoalStore';
 
-// --- HELPER COMPONENT (Moved OUTSIDE to prevent focus loss) ---
+// --- HELPER COMPONENT (Outside to prevent re-mounting & focus loss) ---
 const Field = ({
   label,
   field,
@@ -33,8 +34,8 @@ const Field = ({
   unit?: string;
   draft: UserGoals;
   setDraft: React.Dispatch<React.SetStateAction<UserGoals>>;
-  errors: any;
-  setErrors: any;
+  errors: Partial<Record<keyof UserGoals, string>>;
+  setErrors: React.Dispatch<React.SetStateAction<Partial<Record<keyof UserGoals, string>>>>;
   keyboardType?: 'default' | 'numeric' | 'decimal-pad';
   color?: string;
 }) => (
@@ -43,17 +44,17 @@ const Field = ({
     <View style={[styles.fieldInputRow, errors[field] ? styles.fieldInputError : null]}>
       <TextInput
         style={[styles.fieldInput, { color }]}
-        value={String(draft[field] === 0 ? '' : draft[field])} // Better UX: Don't show '0' when clearing
+        value={String(draft[field] === 0 ? '' : draft[field])}
         keyboardType={keyboardType}
         autoCapitalize="none"
         onChangeText={(t) => {
-          // Allow empty strings so users can actually delete numbers
           let val: string | number = t;
           if (keyboardType !== 'default') {
             val = t === '' ? 0 : parseFloat(t) || 0;
           }
-          setDraft((prev) => ({ ...prev, [field]: val }));
-          setErrors((prev) => ({ ...prev, [field]: undefined }));
+          // Explicitly typing 'prev' fixes the "Implicit Any" error
+          setDraft((prev: UserGoals) => ({ ...prev, [field]: val }));
+          setErrors((prev: Partial<Record<keyof UserGoals, string>>) => ({ ...prev, [field]: undefined }));
         }}
         placeholderTextColor="#8B949E"
       />
@@ -65,6 +66,7 @@ const Field = ({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const auth = getAuth();
   const [goals, setGoals] = useState<UserGoals>(GoalStore.getGoals());
   const [modalVisible, setModalVisible] = useState(false);
   const [draft, setDraft] = useState<UserGoals>(goals);
@@ -96,11 +98,21 @@ export default function ProfileScreen() {
     setModalVisible(false);
   };
 
+  // --- LOGOUT HANDLER ---
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace('/'); // Redirects to index.tsx (Login)
+    } catch (e) {
+      console.error("Logout failed: ", e);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0D1117" />
 
-      {/* --- Header --- */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back-outline" size={28} color="#FFFFFF" />
@@ -110,7 +122,7 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Avatar */}
+        {/* Profile Avatar Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarWrapper}>
             <Ionicons name="person-outline" size={60} color="#00E5FF" />
@@ -127,7 +139,7 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Goal Cards */}
+        {/* Stat List */}
         {[
           { label: 'Daily Calorie Goal', val: `${goals.calorieGoal.toLocaleString()} Cal`, icon: 'flame-outline', color: '#00E676' },
           { label: 'Daily Water Goal', val: `${goals.waterGoal}L`, icon: 'water-outline', color: '#00E5FF' },
@@ -146,14 +158,14 @@ export default function ProfileScreen() {
 
         {/* Logout Menu */}
         <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/(auth)/login')}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#FF5252" style={styles.menuIcon} />
             <Text style={[styles.menuText, { color: '#FF5252' }]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* --- Edit Modal --- */}
+      {/* Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
