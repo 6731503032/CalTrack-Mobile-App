@@ -1,8 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
+import * as Font from 'expo-font';
+import { Meal, MealStore } from '../../constants/MealStore';
+import { Routes } from '../../constants/Routes';
 
 export default function TrackerScreen() {
+  const router = useRouter();
+  const [meals, setMeals] = useState<Meal[]>(MealStore.getMeals());
+  const [loaded, setLoaded] = useState(false);
+
   const weeklyData = [
     { day: 'M', value: 0.6, label: '2.1k' },
     { day: 'T', value: 0.8, label: '2.8k' },
@@ -12,6 +29,36 @@ export default function TrackerScreen() {
     { day: 'S', value: 0.5, label: '1.9k' },
     { day: 'S', value: 0.3, label: '1.1k' },
   ];
+
+  useEffect(() => {
+    async function loadResources() {
+      try {
+        await Font.loadAsync(Ionicons.font);
+      } catch (e) {
+        console.warn("Font loading failed, but continuing render...");
+      } finally {
+        setLoaded(true);
+      }
+    }
+    loadResources();
+
+    const unsubscribe = MealStore.subscribe(() => {
+      setMeals(MealStore.getMeals());
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleAddMeal = () => {
+    router.push({ pathname: '/meal-details', params: { type: 'New Entry' } } as any);
+  };
+
+  if (!loaded) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color="#00E5FF" size="large" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root}>
@@ -41,33 +88,33 @@ export default function TrackerScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Today's Meals</Text>
-            <TouchableOpacity style={styles.addBtn}>
+            <TouchableOpacity style={styles.addBtn} onPress={handleAddMeal}>
               <Ionicons name="add-circle" size={24} color="#00E676" />
             </TouchableOpacity>
           </View>
 
-          {/* Placeholder Meal Items */}
-          <View style={styles.mealRow}>
-            <View style={styles.mealIconBox}>
-              <Ionicons name="restaurant" size={20} color="#00E5FF" />
-            </View>
-            <View style={styles.mealInfo}>
-              <Text style={styles.mealName}>Grilled Chicken Salad</Text>
-              <Text style={styles.mealDetails}>Lunch • 450 Calories</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#30363D" />
-          </View>
-
-          <View style={[styles.mealRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.mealIconBox}>
-              <Ionicons name="leaf" size={20} color="#FFD600" />
-            </View>
-            <View style={styles.mealInfo}>
-              <Text style={styles.mealName}>Brown Rice Bowl</Text>
-              <Text style={styles.mealDetails}>Dinner • 320 Calories</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#30363D" />
-          </View>
+          {meals.map((meal, index) => (
+            <TouchableOpacity 
+              key={meal.id} 
+              style={[styles.mealRow, index === meals.length - 1 && { borderBottomWidth: 0 }]} 
+              onPress={() => router.push({ pathname: '/meal-details', params: { type: meal.type } } as any)}
+            >
+              <View style={styles.mealIconBox}>
+                <Ionicons name="restaurant" size={20} color="#00E5FF" />
+              </View>
+              <View style={styles.mealInfo}>
+                <Text style={styles.mealName}>{meal.type}</Text>
+                <Text style={styles.mealDetails}>{meal.time} â¢ {meal.calories} Calories</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#30363D" />
+            </TouchableOpacity>
+          ))}
+          {meals.length === 0 && (
+             <View style={styles.emptyContainer}>
+                <Ionicons name="sad-outline" size={40} color="#8B949E" />
+                <Text style={styles.emptyText}>No meals added today.</Text>
+             </View>
+          )}
         </View>
 
         {/* Quick Stats Grid */}
@@ -165,4 +212,8 @@ const styles = StyleSheet.create({
   },
   statLabel: { color: '#8B949E', fontSize: 12, textTransform: 'uppercase', fontWeight: 'bold' },
   statValue: { fontSize: 18, fontWeight: '900', marginTop: 5 },
+
+  // Empty State
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 },
+  emptyText: { color: '#C9D1D9', fontSize: 16, fontWeight: 'bold', marginTop: 10 },
 });
