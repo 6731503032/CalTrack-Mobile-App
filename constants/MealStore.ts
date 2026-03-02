@@ -1,15 +1,12 @@
 // constants/MealStore.ts
-// Meals are persisted to AsyncStorage so they survive app restarts.
-// Install if needed: npx expo install @react-native-async-storage/async-storage
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from './storage';
 
 export interface Meal {
   id: string;
   type: string;
   calories: number;
   time: string;
-  date: string;   // ISO date string "2024-03-01" — enables daily filtering
+  date: string;
   protein?: number;
   fat?: number;
   carbs?: number;
@@ -27,20 +24,18 @@ export interface PendingFoodItem {
 
 const STORAGE_KEY = 'caltrack_meals';
 
-// --- In-memory state ---
 let meals: Meal[] = [];
 let mealListeners: Function[] = [];
 let pendingItems: PendingFoodItem[] = [];
 let pendingListeners: Function[] = [];
 
-// --- Helpers ---
 function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
 async function persist(): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
+    await storage.setItem(STORAGE_KEY, JSON.stringify(meals));
   } catch (e) {
     console.warn('MealStore: failed to persist', e);
   }
@@ -55,10 +50,9 @@ function notifyPending(): void {
 }
 
 export const MealStore = {
-  // ── Hydrate from storage (call once on app start) ─────────────────────────
   async hydrate(): Promise<void> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const raw = await storage.getItem(STORAGE_KEY);
       if (raw) {
         meals = JSON.parse(raw) as Meal[];
         notifyMeals();
@@ -68,7 +62,6 @@ export const MealStore = {
     }
   },
 
-  // ── Saved meals ───────────────────────────────────────────────────────────
   getMeals(): Meal[] {
     return meals;
   },
@@ -79,7 +72,6 @@ export const MealStore = {
   },
 
   async addMeal(meal: Meal): Promise<void> {
-    // Attach today's date if not provided
     if (!meal.date) meal.date = todayStr();
     meals = [...meals, meal];
     notifyMeals();
@@ -99,7 +91,6 @@ export const MealStore = {
     };
   },
 
-  // ── Pending basket ────────────────────────────────────────────────────────
   getPendingItems(): PendingFoodItem[] {
     return pendingItems;
   },

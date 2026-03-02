@@ -1,6 +1,6 @@
 export enum Routes {
   LOGIN = '/(auth)/login',
-  TABS = '/(tabs)',
+  TABS = '/(tabs)/home',
   HOME = '/', // Root of the (tabs) group
   TRACKER = '/tracker',
   PROFILE = '/profile',

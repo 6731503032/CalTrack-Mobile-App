@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,12 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { GoalStore, UserGoals } from '../../constants/GoalStore';
 import { Meal, MealStore } from '../../constants/MealStore';
 import { Routes } from '../../constants/Routes';
 
-// --- Daily goals ---
-const GOALS = { calories: 3400, protein: 225, fats: 118, carbs: 340, water: 2.5 };
-
+// Reusable Progress Bar using your preferred heights and colors
 const HorizontalBar = ({ progress, color }: { progress: number; color: string }) => (
   <View style={styles.barBg}>
     <View style={[styles.barFill, { width: `${Math.min(progress * 100, 100)}%`, backgroundColor: color }]} />
@@ -25,110 +25,122 @@ const HorizontalBar = ({ progress, color }: { progress: number; color: string })
 export default function HomeScreen() {
   const router = useRouter();
   const [meals, setMeals] = useState<Meal[]>(MealStore.getMeals());
+  const [goals, setGoals] = useState<UserGoals>(GoalStore.getGoals());
   const [water, setWater] = useState<number>(0);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
-    // Subscribe to meal store changes only — fonts already loaded by _layout.tsx
-    const unsub = MealStore.subscribe(() => setMeals(MealStore.getMeals()));
-    return unsub;
+    const unsubMeals = MealStore.subscribe(() => setMeals(MealStore.getMeals()));
+    const unsubGoals = GoalStore.subscribe(() => setGoals(GoalStore.getGoals()));
+    return () => {
+      unsubMeals();
+      unsubGoals();
+    };
   }, []);
 
-  // --- Derived totals (live from real meal data) ---
+  // --- Calculations ---
   const totalCals    = meals.reduce((s, m) => s + (m.calories ?? 0), 0);
   const totalProtein = meals.reduce((s, m) => s + (m.protein  ?? 0), 0);
   const totalFats    = meals.reduce((s, m) => s + (m.fat      ?? 0), 0);
   const totalCarbs   = meals.reduce((s, m) => s + (m.carbs    ?? 0), 0);
 
-  // --- Water ---
-  const waterPercentage = Math.round((water / GOALS.water) * 100);
-  const addWater    = () => setWater((p) => Math.min(+(p + 0.1).toFixed(1), GOALS.water));
+  const waterPercentage = Math.round((water / goals.waterGoal) * 100);
+  const addWater    = () => setWater((p) => Math.min(+(p + 0.1).toFixed(1), goals.waterGoal));
   const removeWater = () => setWater((p) => Math.max(+(p - 0.1).toFixed(1), 0));
 
-  // --- Delete meal (long press) ---
+  // --- UNIVERSAL DELETE LOGIC (Fixes Web & Mobile) ---
   const handleDeleteMeal = (meal: Meal) => {
-    Alert.alert(
-      `Delete "${meal.type}"?`,
-      'This will remove the meal and update your daily totals.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await MealStore.removeMeal(meal.id);
-          },
-        },
-      ]
-    );
-  };
+    const performDelete = async () => {
+      await MealStore.removeMeal(meal.id);
+      const freshMeals = MealStore.getMeals();
+      setMeals(freshMeals);
+      if (freshMeals.length === 0) setEditMode(false);
+    };
 
-  const handleAddMeal = () => router.push('/meal-details' as any);
+    // Intuitive Confirmation Logic
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete "${meal.type}"? This cannot be undone.`)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Delete Meal",
+        `Are you sure you want to remove "${meal.type}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: performDelete }
+        ]
+      );
+    }
+  };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-        {/* --- Header --- */}
+        {/* --- Header Section --- */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <View style={styles.profileSquare}>
-              <Ionicons name="person-circle-sharp" size={32} color="#00E5FF" />
+              {/* Changed to -outline icons to stop "Tofu" rectangles on Web */}
+              <Ionicons name="person-outline" size={32} color="#00E5FF" />
             </View>
             <View>
-              <Text style={styles.greetingText}>Hello Bon!</Text>
+              <Text style={styles.greetingText}>Hello {goals.name}!</Text>
               <Text style={styles.subGreeting}>Let's track your health</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.calendarCircle} onPress={() => router.push(Routes.TRACKER as any)}>
-            <Ionicons name="calendar-sharp" size={24} color="#00E5FF" />
+            <Ionicons name="stats-chart-outline" size={24} color="#00E5FF" />
           </TouchableOpacity>
         </View>
 
-        {/* --- Nutrients Tracker (live) --- */}
+        {/* --- Nutrients Tracker Card --- */}
         <Text style={styles.sectionTitle}>Nutrients Tracker</Text>
         <TouchableOpacity style={styles.card} onPress={() => router.push(Routes.TRACKER as any)}>
           <View style={styles.macroRow}>
             <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{Math.round(totalProtein)}/{GOALS.protein}</Text>
-              <HorizontalBar progress={totalProtein / GOALS.protein} color="#00E5FF" />
+              <Text style={styles.macroValue}>{Math.round(totalProtein)}/{goals.proteinGoal}g</Text>
+              <HorizontalBar progress={totalProtein / goals.proteinGoal} color="#00E5FF" />
               <Text style={styles.macroLabel}>Proteins</Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{Math.round(totalFats)}/{GOALS.fats}</Text>
-              <HorizontalBar progress={totalFats / GOALS.fats} color="#00E676" />
+              <Text style={styles.macroValue}>{Math.round(totalFats)}/{goals.fatGoal}g</Text>
+              <HorizontalBar progress={totalFats / goals.fatGoal} color="#00E676" />
               <Text style={styles.macroLabel}>Fats</Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{Math.round(totalCarbs)}/{GOALS.carbs}</Text>
-              <HorizontalBar progress={totalCarbs / GOALS.carbs} color="#FFD600" />
+              <Text style={styles.macroValue}>{Math.round(totalCarbs)}/{goals.carbGoal}g</Text>
+              <HorizontalBar progress={totalCarbs / goals.carbGoal} color="#FFD600" />
               <Text style={styles.macroLabel}>Carbs</Text>
             </View>
           </View>
           <View style={styles.calorieSection}>
             <Text style={styles.calValueText}>
-              {totalCals} <Text style={styles.calGoalText}>/ {GOALS.calories} Cal</Text>
+              {totalCals} <Text style={styles.calGoalText}>/ {goals.calorieGoal} Cal</Text>
             </Text>
-            <HorizontalBar progress={totalCals / GOALS.calories} color="#00E676" />
+            <HorizontalBar progress={totalCals / goals.calorieGoal} color="#00E676" />
           </View>
         </TouchableOpacity>
 
-        {/* --- Water Intake --- */}
+        {/* --- Water Section --- */}
         <Text style={styles.sectionTitle}>Daily Water Intake</Text>
         <View style={styles.card}>
           <View style={styles.waterRow}>
             <View style={styles.waterInfo}>
-              <Text style={styles.waterLabelText}>Water Consumed</Text>
-              <Text style={styles.waterMainVal}>{water.toFixed(1)} <Text style={styles.waterSubVal}>/ {GOALS.water}L</Text></Text>
+              <Text style={styles.waterLabelText}>Consumed</Text>
+              <Text style={styles.waterMainVal}>{water.toFixed(1)}<Text style={styles.waterSubVal}> / {goals.waterGoal}L</Text></Text>
               <Text style={styles.hydrationStatus}>Hydration: {waterPercentage}%</Text>
             </View>
             <View style={styles.waterVisuals}>
               <View style={styles.waterButtons}>
-                <TouchableOpacity style={styles.accCircleBtn} onPress={addWater}>
-                  <Ionicons name="add-circle" size={30} color="#FFFFFF" />
+                {/* Large touch targets for accessibility */}
+                <TouchableOpacity style={styles.accCircleBtn} onPress={addWater} hitSlop={15}>
+                  <Ionicons name="add-outline" size={30} color="#00E5FF" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.accCircleBtn} onPress={removeWater}>
-                  <Ionicons name="remove-circle" size={30} color="#FFFFFF" />
+                <TouchableOpacity style={styles.accCircleBtn} onPress={removeWater} hitSlop={15}>
+                  <Ionicons name="remove-outline" size={30} color="#00E5FF" />
                 </TouchableOpacity>
               </View>
               <View style={styles.waterPillBg}>
@@ -139,49 +151,60 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* --- Daily Meals --- */}
+        {/* --- Meals List Section --- */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Daily Meals</Text>
-          <TouchableOpacity style={styles.addMealBtn} onPress={handleAddMeal}>
-            <Ionicons name="add-sharp" size={35} color="#0D1117" />
-          </TouchableOpacity>
+          <View style={styles.mealHeaderActions}>
+            {meals.length > 0 && (
+              <TouchableOpacity
+                style={[styles.editBtn, editMode && styles.editBtnActive]}
+                onPress={() => setEditMode(!editMode)}
+              >
+                <Ionicons 
+                  name={editMode ? 'checkmark-outline' : 'pencil-outline'} 
+                  size={18} 
+                  color={editMode ? '#0D1117' : '#8B949E'} 
+                />
+                <Text style={[styles.editBtnText, editMode && styles.editBtnTextActive]}>
+                  {editMode ? 'Done' : 'Edit'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.addMealBtn} onPress={() => router.push('/meal-details' as any)}>
+              <Ionicons name="add-outline" size={35} color="#0D1117" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {meals.length === 0 && (
+        {meals.length === 0 ? (
           <View style={styles.emptyMeals}>
-            <Ionicons name="restaurant-outline" size={36} color="#8B949E" />
+            <Ionicons name="fast-food-outline" size={40} color="#30363D" />
             <Text style={styles.emptyMealsText}>No meals logged yet</Text>
-            <Text style={styles.emptyMealsSubText}>Tap + to add your first meal</Text>
           </View>
-        )}
-
-        {meals.map((meal) => (
-          <TouchableOpacity
-            key={meal.id}
-            style={styles.mealCard}
-            onLongPress={() => handleDeleteMeal(meal)}
-            delayLongPress={400}
-          >
-            <View style={styles.mealLeft}>
-              <View style={styles.mealIconBox}>
-                <Ionicons name="restaurant-sharp" size={22} color="#00E5FF" />
+        ) : (
+          meals.map((meal) => (
+            <View key={meal.id} style={styles.mealCard}>
+              {editMode && (
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteMeal(meal)}>
+                  <Ionicons name="trash-outline" size={20} color="#FF453A" />
+                </TouchableOpacity>
+              )}
+              <View style={styles.mealLeft}>
+                <View style={styles.mealIconBox}>
+                  <Ionicons name="restaurant-outline" size={22} color="#00E5FF" />
+                </View>
+                <View>
+                  <Text style={styles.mealName}>{meal.type}</Text>
+                  <Text style={styles.mealTime}>{meal.time}</Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.mealName}>{meal.type}</Text>
-                <Text style={styles.mealTime}>{meal.time}</Text>
+              <View style={styles.mealRight}>
+                <Text style={styles.mealCalValue}>{meal.calories}</Text>
+                <Text style={styles.mealCalLabel}>Cal</Text>
               </View>
             </View>
-            <View style={styles.mealRight}>
-              <Text style={styles.mealCalValue}>{meal.calories}</Text>
-              <Text style={styles.mealCalLabel}>Cal</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {meals.length > 0 && (
-          <Text style={styles.deleteHint}>Long press a meal to delete it</Text>
+          ))
         )}
-
       </ScrollView>
     </View>
   );
@@ -199,6 +222,11 @@ const styles = StyleSheet.create({
   calendarCircle: { width: 44, height: 44, backgroundColor: '#161B22', borderRadius: 22, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#30363D' },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginBottom: 15, marginTop: 15 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 12 },
+  mealHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#161B22', borderWidth: 1, borderColor: '#30363D' },
+  editBtnActive: { backgroundColor: '#00E676', borderColor: '#00E676' },
+  editBtnText: { fontSize: 14, fontWeight: '600', color: '#8B949E' },
+  editBtnTextActive: { color: '#0D1117' },
   card: { backgroundColor: '#161B22', borderRadius: 20, padding: 22, marginBottom: 20, borderWidth: 1.5, borderColor: '#30363D' },
   barBg: { width: '100%', height: 10, backgroundColor: '#0D1117', borderRadius: 5, marginVertical: 10 },
   barFill: { height: '100%', borderRadius: 5 },
@@ -223,7 +251,8 @@ const styles = StyleSheet.create({
   waterPercentText: { position: 'absolute', width: '100%', textAlign: 'center', bottom: '45%', fontSize: 14, color: '#FFFFFF', fontWeight: 'bold' },
   addMealBtn: { width: 56, height: 56, backgroundColor: '#00E676', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   mealCard: { backgroundColor: '#161B22', borderRadius: 18, padding: 18, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#30363D' },
-  mealLeft: { flexDirection: 'row', alignItems: 'center' },
+  deleteBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#2D1B1B', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: '#FF453A33' },
+  mealLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   mealIconBox: { width: 48, height: 48, backgroundColor: '#0D1117', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   mealName: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
   mealTime: { fontSize: 14, color: '#8B949E', marginTop: 2 },
@@ -232,6 +261,4 @@ const styles = StyleSheet.create({
   mealCalLabel: { fontSize: 12, color: '#8B949E', fontWeight: 'bold' },
   emptyMeals: { alignItems: 'center', paddingVertical: 40 },
   emptyMealsText: { color: '#C9D1D9', fontSize: 16, fontWeight: 'bold', marginTop: 10 },
-  emptyMealsSubText: { color: '#8B949E', fontSize: 13, marginTop: 4 },
-  deleteHint: { textAlign: 'center', color: '#30363D', fontSize: 12, marginTop: 4, marginBottom: 8 },
 });
