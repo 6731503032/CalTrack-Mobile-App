@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { MealStore } from '../constants/MealStore';
 
-// Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -15,46 +14,47 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // 1. Explicitly load font assets (Essential for Web Localhost)
-        await Font.loadAsync({
-          SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-          ...Ionicons.font,
-          ...MaterialIcons.font,
-          ...FontAwesome.font,
-        });
+        // --- THE ONLY FIX FOR FIREBASE ICONS ---
+        if (isWeb && typeof document !== 'undefined') {
+          const style = document.createElement('style');
+          style.innerHTML = `
+            @font-face {
+              font-family: 'Ionicons';
+              src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@latest/dist/vendor/react-native-vector-icons/Fonts/Ionicons.ttf');
+            }
+          `;
+          document.head.appendChild(style);
+        }
 
-        // 2. Hydrate the MealStore
-        await MealStore.hydrate();
+        await Promise.all([
+          Font.loadAsync({
+            ...Ionicons.font,
+            ...MaterialIcons.font,
+            ...FontAwesome.font,
+          }),
+          // Catch hydration errors so they don't block the UI
+          MealStore.hydrate().catch(e => console.log("Store failed", e))
+        ]);
       } catch (e) {
-        console.warn("Initialization Error:", e);
+        console.warn(e);
       } finally {
-        // Tell the app to render and hide splash
         setAppIsReady(true);
         await SplashScreen.hideAsync();
       }
     }
-
     prepare();
   }, []);
 
-  if (!appIsReady) {
-    return null;
-  }
+  if (!appIsReady) return null;
 
   return (
     <View style={styles.outerContainer}>
       <View style={[styles.innerContainer, { width: isWeb ? 400 : '100%' }]}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            // Uses your #0D1117 background for screen transitions
-            contentStyle: { backgroundColor: '#0D1117' },
-          }}
-        >
-          <Stack.Screen name="(auth)/login" />
+        <Stack screenOptions={{ 
+          headerShown: false, 
+          contentStyle: { backgroundColor: '#0D1117' } 
+        }}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="meal-details" />
-          <Stack.Screen name="food-picker" />
         </Stack>
       </View>
     </View>
@@ -64,14 +64,14 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: '#0D1117', // Your preference
     alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
   },
   innerContainer: {
     flex: 1,
     backgroundColor: '#0D1117',
+    borderColor: '#30363D', // Your custom border
     borderLeftWidth: Platform.OS === 'web' ? 1 : 0,
     borderRightWidth: Platform.OS === 'web' ? 1 : 0,
-    borderColor: '#30363D', // Your custom border color
   },
 });
