@@ -24,7 +24,7 @@ import {
     signInWithEmailAndPassword,
     signInWithPopup,
 } from '@firebase/auth';
-import { GoalStore } from '../../constants/GoalStore';
+import { GoalStore } from '../constants/GoalStore';
 
 // --- FIREBASE SETUP ---
 const firebaseConfig = {
