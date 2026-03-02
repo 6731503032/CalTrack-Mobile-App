@@ -1,10 +1,11 @@
+// app/_layout.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import { MealStore } from '../constants/MealStore';
 import { GoalStore } from '../constants/GoalStore';
+import { MealStore } from '../constants/MealStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,6 +32,9 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: '#0D1117' }
         }}>
+          {/* EXPLICITLY DEFINE YOUR ROUTES HERE */}
+          <Stack.Screen name="index" /> 
+          <Stack.Screen name="setup_name" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </View>

@@ -9,29 +9,26 @@ export default function TabsLayout() {
     <Tabs 
       screenOptions={{ 
         headerShown: false, 
-        tabBarActiveTintColor: '#00E5FF', // Cyan
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: '#00E5FF', // Cyan for active state
+        tabBarInactiveTintColor: '#8B949E', // Light Gray subtext
         tabBarStyle: {
           backgroundColor: '#0D1117', // High contrast Background
           borderTopWidth: 1,
-          borderTopColor: '#30363D', // Border color
+          borderTopColor: '#30363D', // Border color for cards/buttons
           height: isWeb ? 70 : 65,
           paddingBottom: 10,
           paddingTop: 8,
           elevation: 0,
         },
         tabBarItemStyle: {
-          height: 55, // Increased touch targets
+          height: 55, // Increased touch targets for accessibility
         }
       }}
     >
-      {/* --- HIDE THE INDEX (LOGIN) TAB --- */}
-      <Tabs.Screen 
-        name="index" 
-        options={{ 
-          href: null, // This removes the tab from the bottom bar
-        }} 
-      />
+      {/* REMOVED: <Tabs.Screen name="index" /> 
+          Because app/index.tsx is at the root level, NOT inside the (tabs) folder.
+          Including it here causes the "No route named index" build error.
+      */}
 
       <Tabs.Screen 
         name="home" 
