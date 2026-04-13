@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { getAuth, signOut } from '@firebase/auth'; // Added Firebase Auth
+import { getAuth, signOut } from '@firebase/auth';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,7 +18,8 @@ import {
 } from 'react-native';
 import { GoalStore, UserGoals } from '../../constants/GoalStore';
 
-// --- HELPER COMPONENT (Outside to prevent re-mounting & focus loss) ---
+const { width } = Dimensions.get('window');
+
 const Field = ({
   label,
   field,
@@ -52,7 +54,6 @@ const Field = ({
           if (keyboardType !== 'default') {
             val = t === '' ? 0 : parseFloat(t) || 0;
           }
-          // Explicitly typing 'prev' fixes the "Implicit Any" error
           setDraft((prev: UserGoals) => ({ ...prev, [field]: val }));
           setErrors((prev: Partial<Record<keyof UserGoals, string>>) => ({ ...prev, [field]: undefined }));
         }}
@@ -98,11 +99,10 @@ export default function ProfileScreen() {
     setModalVisible(false);
   };
 
-  // --- LOGOUT HANDLER ---
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.replace('/'); // Redirects to index.tsx (Login)
+      router.replace('/');
     } catch (e) {
       console.error("Logout failed: ", e);
     }
@@ -112,7 +112,6 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0D1117" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back-outline" size={28} color="#FFFFFF" />
@@ -122,7 +121,6 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Avatar Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarWrapper}>
             <Ionicons name="person-outline" size={60} color="#00E5FF" />
@@ -130,7 +128,6 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{goals.name}</Text>
         </View>
 
-        {/* My Info Button */}
         <TouchableOpacity style={styles.primaryCard} onPress={openModal}>
           <Text style={styles.primaryCardText}>My Info</Text>
           <View style={styles.row}>
@@ -139,7 +136,6 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Stat List */}
         {[
           { label: 'Daily Calorie Goal', val: `${goals.calorieGoal.toLocaleString()} Cal`, icon: 'flame-outline', color: '#00E676' },
           { label: 'Daily Water Goal', val: `${goals.waterGoal}L`, icon: 'water-outline', color: '#00E5FF' },
@@ -156,7 +152,6 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        {/* Logout Menu */}
         <View style={styles.menuContainer}>
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#FF5252" style={styles.menuIcon} />
@@ -165,7 +160,6 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -221,8 +215,8 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 20 },
   menuIcon: { marginRight: 15 },
   menuText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  modalSheet: { backgroundColor: '#161B22', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '85%' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
+  modalSheet: { backgroundColor: '#161B22', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '85%', width: width, maxWidth: 500 },
   modalHandle: { width: 40, height: 4, backgroundColor: '#30363D', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
