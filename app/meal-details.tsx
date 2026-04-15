@@ -21,6 +21,9 @@ export default function MealDetailsScreen() {
 
   const [foods, setFoods] = useState<PendingFoodItem[]>(MealStore.getPendingItems());
 
+  // ✅ NEW: tracks how many servings of each food item
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
   const [nameModalVisible, setNameModalVisible] = useState<boolean>(false);
   const [mealName, setMealName] = useState<string>('');
   const [mealNameInput, setMealNameInput] = useState<string>('');
@@ -37,21 +40,37 @@ export default function MealDetailsScreen() {
     return unsub;
   }, []);
 
+  // ✅ NEW: helper to get qty for an item (default 1)
+  const getQty = (id: string) => quantities[id] ?? 1;
+
+  // ✅ NEW: +/- quantity handlers
+  const increaseQty = (id: string) =>
+    setQuantities((prev) => ({ ...prev, [id]: (prev[id] ?? 1) + 1 }));
+
+  const decreaseQty = (id: string) =>
+    setQuantities((prev) => ({ ...prev, [id]: Math.max(1, (prev[id] ?? 1) - 1) }));
+
+  // ✅ UPDATED: totals now multiply by quantity
   const totals = {
-    cal:  Math.round(foods.reduce((s, f) => s + f.calories, 0)),
-    prot: foods.reduce((s, f) => s + f.proteins, 0),
-    fat:  foods.reduce((s, f) => s + f.fats, 0),
-    carb: foods.reduce((s, f) => s + f.carbs, 0),
+    cal:  Math.round(foods.reduce((s, f) => s + f.calories  * getQty(f.id), 0)),
+    prot: foods.reduce((s, f) => s + f.proteins * getQty(f.id), 0),
+    fat:  foods.reduce((s, f) => s + f.fats     * getQty(f.id), 0),
+    carb: foods.reduce((s, f) => s + f.carbs    * getQty(f.id), 0),
   };
 
   const handleAddFood = () => {
     router.push('/food-picker' as any);
   };
 
-  // --- FIX: Platform check so trash works on both web and mobile ---
   const handleRemoveItem = (item: PendingFoodItem) => {
     const performDelete = () => {
       MealStore.removePendingItem(item.id);
+      // ✅ also clean up the quantity entry
+      setQuantities((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
     };
 
     if (Platform.OS === 'web') {
@@ -157,22 +176,41 @@ export default function MealDetailsScreen() {
           </View>
         )}
 
-        {foods.map((item) => (
-          <View key={item.id} style={styles.foodRow}>
-            <View style={styles.foodIconBox}>
-              <Ionicons name="fast-food-outline" size={20} color="#00E5FF" />
+        {foods.map((item) => {
+          const qty = getQty(item.id);
+          return (
+            <View key={item.id} style={styles.foodRow}>
+              <View style={styles.foodIconBox}>
+                <Ionicons name="fast-food-outline" size={20} color="#00E5FF" />
+              </View>
+
+              <View style={styles.foodInfo}>
+                <Text style={styles.foodName}>{item.name}</Text>
+                <Text style={styles.foodSub}>
+                  {item.weight * qty}g • {Math.round(item.calories * qty)} Cal •{' '}
+                  P:{(item.proteins * qty).toFixed(1)}g{' '}
+                  F:{(item.fats * qty).toFixed(1)}g{' '}
+                  C:{(item.carbs * qty).toFixed(1)}g
+                </Text>
+              </View>
+
+              {/* ✅ NEW: Quantity +/- controls */}
+              <View style={styles.qtyRow}>
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => decreaseQty(item.id)}>
+                  <Text style={styles.qtyBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtyNum}>{qty}</Text>
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => increaseQty(item.id)}>
+                  <Text style={styles.qtyBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveItem(item)}>
+                <Ionicons name="trash-outline" size={18} color="#8B949E" />
+              </TouchableOpacity>
             </View>
-            <View style={styles.foodInfo}>
-              <Text style={styles.foodName}>{item.name}</Text>
-              <Text style={styles.foodSub}>
-                {item.weight}g • {item.calories} Cal • P:{item.proteins}g F:{item.fats}g C:{item.carbs}g
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveItem(item)}>
-              <Ionicons name="trash-outline" size={18} color="#8B949E" />
-            </TouchableOpacity>
-          </View>
-        ))}
+          );
+        })}
 
         <TouchableOpacity style={styles.centerAdd} onPress={handleAddFood}>
           <Ionicons name="add-circle" size={52} color="#00E676" />
@@ -252,8 +290,6 @@ export default function MealDetailsScreen() {
   );
 }
 
-// ... EVERYTHING ABOVE IS EXACTLY THE SAME (UNCHANGED)
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0D1117' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 },
@@ -276,6 +312,13 @@ const styles = StyleSheet.create({
   foodName: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   foodSub: { fontSize: 12, color: '#8B949E', marginTop: 3 },
   removeBtn: { padding: 6 },
+
+  // ✅ NEW: quantity selector styles
+  qtyRow: { flexDirection: 'row', alignItems: 'center', marginRight: 8 },
+  qtyBtn: { width: 28, height: 28, backgroundColor: '#0D1117', borderRadius: 8, borderWidth: 1, borderColor: '#30363D', justifyContent: 'center', alignItems: 'center' },
+  qtyBtnText: { color: '#00E676', fontSize: 18, fontWeight: '900', lineHeight: 22 },
+  qtyNum: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', marginHorizontal: 8, minWidth: 16, textAlign: 'center' },
+
   centerAdd: { alignItems: 'center', paddingVertical: 30 },
   centerAddText: { color: '#00E676', fontSize: 14, fontWeight: '700', marginTop: 8 },
   footer: { padding: 20, paddingBottom: 30, backgroundColor: '#0D1117' },
@@ -283,25 +326,21 @@ const styles = StyleSheet.create({
   saveBtnDisabled: { backgroundColor: '#21262D' },
   saveBtnText: { color: '#0D1117', fontSize: 16, fontWeight: '900' },
 
-  // ✅ FIXED MODAL (ONLY CHANGE)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    // ❌ removed paddingHorizontal: 24
   },
-
   modalBox: {
     backgroundColor: '#161B22',
     borderRadius: 20,
     padding: 24,
-    width: '90%',     // ✅ FIX (was 100%)
-    maxWidth: 500,    // ✅ FIX (prevents web stretch)
+    width: '90%',
+    maxWidth: 360,   // ✅ FIX: was 500, now capped at mobile size
     borderWidth: 1.5,
     borderColor: '#30363D',
   },
-
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginBottom: 16, textAlign: 'center' },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   presetChip: { paddingVertical: 7, paddingHorizontal: 14, backgroundColor: '#0D1117', borderRadius: 20, borderWidth: 1, borderColor: '#30363D' },
