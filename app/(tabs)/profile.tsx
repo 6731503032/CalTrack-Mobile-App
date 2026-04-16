@@ -3,7 +3,6 @@ import { getAuth, signOut } from '@firebase/auth';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,8 +16,6 @@ import {
   View,
 } from 'react-native';
 import { GoalStore, UserGoals } from '../../constants/GoalStore';
-
-const { width } = Dimensions.get('window');
 
 const Field = ({
   label,
@@ -104,7 +101,7 @@ export default function ProfileScreen() {
       await signOut(auth);
       router.replace('/');
     } catch (e) {
-      console.error("Logout failed: ", e);
+      console.error('Logout failed: ', e);
     }
   };
 
@@ -165,6 +162,12 @@ export default function ProfileScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+          {/* Tap outside to dismiss */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
+          />
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -215,8 +218,27 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 20 },
   menuIcon: { marginRight: 15 },
   menuText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-  modalSheet: { backgroundColor: '#161B22', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '85%', width: width, maxWidth: 500 },
+
+  // ── Modal fixes ──────────────────────────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',          // stretch so child can fill full width
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  modalSheet: {
+    backgroundColor: '#161B22',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 40,
+    maxHeight: '85%',
+    width: '100%',                  // always fill available width…
+    maxWidth: 500,                  // …but cap on wide screens
+    alignSelf: 'center',            // center on web/tablet
+  },
+  // ─────────────────────────────────────────────────────────────────────────────
+
   modalHandle: { width: 40, height: 4, backgroundColor: '#30363D', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
