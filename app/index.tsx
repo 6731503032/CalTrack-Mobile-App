@@ -22,6 +22,7 @@ import {
     signInAnonymously,
     signInWithEmailAndPassword,
 } from '@firebase/auth';
+import { seedFoodDatabase } from '../functions/lib/seedFoods'; // ← NEW
 import { GoalStore } from '../constants/GoalStore';
 
 // --- FIREBASE SETUP ---
@@ -82,6 +83,7 @@ export default function LoginScreen() {
 
     // --- NAVIGATION ---
     const handleNavigation = async () => {
+        await seedFoodDatabase(); // ← NEW: seeds foods to Firestore once, skips if already done
         const goals = await GoalStore.hydrate();
         const nameIsMissing = !goals.name || goals.name.trim() === '';
         if (nameIsMissing) {

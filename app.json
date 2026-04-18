@@ -20,6 +20,7 @@
       "userInterfaceStyle": "dark"
     },
     "android": {
+      "package": "com.caltrack.app",
       "userInterfaceStyle": "dark",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
@@ -54,8 +55,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "55e707c1-ea3e-430a-bbc9-a0fdf33efaab"
       }
-    }
+    },
+    "owner": "6731503032"
   }
 }
